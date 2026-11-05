@@ -95,10 +95,22 @@ def word_hints(question, hits):
     return lines + [''] if lines else []
 
 
+TIME_RANGE = re.compile(r'(\d{1,2}:\d{2})\s*[-~–]\s*(\d{1,2}:\d{2})(까지)?')
+
+
+def spell_time_ranges(text):
+    """'06:00-23:00' → '06:00부터 23:00까지' (docs/adr/0023).
+
+    '출입시간은 06:00-23:00'을 보고 '통금은 06:00까지'라고 답했다(같은 질문 20번 중 12번).
+    범위를 말로 풀어 주면 20번 모두 23:00 이라고 답했다. 모델에게 보내는 글만 바꾸고 저장된 원문은 그대로 둔다.
+    """
+    return TIME_RANGE.sub(lambda m: f'{m.group(1)}부터 {m.group(2)}까지', text)
+
+
 def build_prompt(title, content, hits):
     lines = ['[문의]', f'제목: {title}', f'내용: {content}', '', '[근거]']
     for number, hit in enumerate(hits, start=1):
-        lines += [f'[{number}] {hit.chunk.title}', hit.chunk.content, '']
+        lines += [f'[{number}] {hit.chunk.title}', spell_time_ranges(hit.chunk.content), '']
     lines += word_hints(f'{title} {content}', hits)
     # 작은 모델은 긴 지시보다 바로 앞의 말을 더 잘 따른다. 근거 뒤에 핵심 규칙을 한 번 더 둔다
     lines.append(REMINDER)

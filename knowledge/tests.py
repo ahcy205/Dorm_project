@@ -708,7 +708,20 @@ class DraftPromptTests(TestCase):
         hit = SearchHit(chunk=KnowledgeChunk(key='rules:article:3', title='제3조', content='06:00-23:00'), score=1.0)
         prompt = build_prompt('통금', '몇 시까지?', [hit])
         self.assertTrue(prompt.endswith(REMINDER))
-        self.assertIn('[1] 제3조\n06:00-23:00', prompt)
+        self.assertIn('[1] 제3조\n06:00부터 23:00까지', prompt)   # 시각 범위는 풀어 쓴다 (docs/adr/0023)
+
+    def test_prompt_spells_out_time_ranges(self):
+        """'출입시간은 06:00-23:00'을 보고 '통금은 06:00까지'라고 답했다(20번 중 12번). 범위를 '부터 ~까지'로 풀면 20번 모두 맞았다."""
+        from knowledge.answering import build_prompt
+        from knowledge.search import SearchHit
+        hit = SearchHit(chunk=KnowledgeChunk(key='rules:article:3', title='제3조', content=(
+            '관생의 생활관내 출입시간은 06:00-23:00로 한다.\n천정등은 00:00-06:00까지 소등한다.\n'
+            '매주 수요일 22:00 ~ 23:00에 대청소를 실시한다.')), score=1.0)
+        prompt = build_prompt('', '통금 몇 시까지야?', [hit])
+        self.assertIn('출입시간은 06:00부터 23:00까지로 한다', prompt)
+        self.assertIn('천정등은 00:00부터 06:00까지 소등', prompt)
+        self.assertIn('22:00부터 23:00까지에 대청소', prompt)
+        self.assertEqual(hit.chunk.content.count('06:00-23:00'), 1)   # 저장된 원문은 그대로
 
     def test_prompt_tells_the_model_which_rule_word_the_student_meant(self):
         """학생 말(전기장판)과 규칙 말(전열기)이 다르면 모델이 "명시되어 있지 않지만"으로 말을 돌린다.
