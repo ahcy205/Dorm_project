@@ -56,8 +56,10 @@ def regulation_chunks(page):
             ))
     if 'penalty_table' in doc:
         table = doc['penalty_table']
-        lines = [f'{row["no"]}. {row["violation"]}: {row["points"]}' + (f' ({row["note"]})' if row['note'] else '')
-                 for row in table['rows']]
+        # 항목 번호를 붙이지 않는다. '12. 무단 외박: 7점' 의 12 를 모델이 출처 번호 [12] 로 인용하거나
+        # '18. 음주…' 를 '흡연 18점' 처럼 점수로 읽었다 (docs/adr/0023). 점수에는 '벌점'을 붙여 숫자의 뜻을 밝힌다
+        lines = [f'- {row["violation"]}: ' + (f'벌점 {row["points"]}' if row['points'].endswith('점') else row['points'])
+                 + (f' ({row["note"]})' if row['note'] else '') for row in table['rows']]
         chunks.append(Chunk(
             source=source, key=f'{page}:penalty_table', title=f'{doc["title"]} 벌점 기준 (별표1)',
             content='\n'.join(lines + [''] + doc.get('notes', [])).strip(), url=doc['url'],
