@@ -78,6 +78,9 @@ questions:
 - q: 중간에 나가면 기숙사비 돌려받을 수 있어?
   expected: [info:article:21]
   facts: ['환불']
+- q: 기숙사 밥 안 먹으면 식비 환불돼?
+  expected: [info:article:21]
+  facts: ['의무식|환불되지 않|환불이 안|환불 안']
 - q: 자치위원 하면 무슨 혜택 있어?
   expected: [info:article:25]
   facts: ['면제|장학금']

@@ -45,8 +45,9 @@ SYSTEM_PROMPT = DRAFT_SYSTEM_PROMPT
 
 # 첫 문장에서 "자료에 없다"고 하면, 관계없는 근거 번호를 붙였더라도 답을 찾지 못한 것으로 본다
 NOT_FOUND = re.compile(r'확인할 수 없|확인하기 어렵|확인되지 않|명시되어 있지 않|언급되어 있지 않|포함되어 있지 않|나와 있지 않')
-# "명시되어 있지 않지만/않으나/않았지만/않은데" — 없다고 한 뒤 바로 답을 잇는 말
-HEDGE = re.compile(rf'(?:{NOT_FOUND.pattern})(?:았|었)?(?:지만|으나|은데|는데)')
+# "명시되어 있지 않지만/않으나/않았지만/않은데/않아/않으므로" — 없다고 한 뒤 바로 답이나 안내를 잇는 말.
+# "않아요."는 문장을 끝내는 말(자료에 없음)이라 넣지 않는다 (docs/adr/0023)
+HEDGE = re.compile(rf'(?:{NOT_FOUND.pattern})(?:았|었)?(?:지만|으나|은데|는데|아서|아(?!요)|으므로|므로)')
 PARAGRAPH = re.compile(r'\n\s*\n')
 GREETING = re.compile(r'^\s*안녕하세요[.!]?\s*')
 SENTENCE_END = re.compile(r'(?<=[.!?])\s+')

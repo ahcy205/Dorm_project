@@ -179,8 +179,11 @@ class ChunkingTests(TestCase):
     def test_refund_article_says_the_table_is_missing(self):
         # 원본에 환불 기준표가 없어 제목만 남아 있었고, 모델이 "벌점 20점 이하면 환불"처럼 지어냈다 (docs/adr/0022)
         chunk = next(c for c in build_chunks(['info']) if c.key == 'info:article:21')
-        self.assertIn('기준표는 이 안내에 실려 있지 않다', chunk.content)
-        self.assertIn('행정실에 문의', chunk.content)
+        self.assertIn('기간별 기준표는 이 안내에 실려 있지 않다', chunk.content)
+        # 유원대 생활관 2024-1학기 모집 공지에서 확인한 두 가지만, 출처를 붙여 넣는다 (docs/adr/0023)
+        self.assertIn('(2024학년도 1학기 영동캠퍼스 생활관 모집 공지 기준) 기숙사 식비는 의무식', chunk.content)
+        self.assertIn('입소 후 3/4선이 지나면 관리비는 환불되지 않는다', chunk.content)
+        self.assertIn('생활관 사무실(043-740-1265)에 문의', chunk.content)
 
     def test_menu_chunk_says_when_a_meal_is_not_served(self):
         # 메뉴가 없는 끼니를 빈칸으로 두면 모델이 다른 요일 메뉴를 가져왔다 (docs/adr/0022)
@@ -853,6 +856,12 @@ class StudentChatTests(TestCase):
             with self.subTest(text=text):
                 self.assertFalse(opens_with_not_found(text))
         self.assertTrue(opens_with_not_found('정확한 시간은 명시되어 있지 않지만 확인할 수 없습니다 [1].'))
+        # "않아 / 않으므로"도 뒤에 안내가 이어지는 말이다. "않아요."로 끝나면 자료에 없다는 말이므로 숨긴다
+        for text in ('환불 여부는 기준표가 안내에 포함되어 있지 않아 정확히 말씀드리기 어렵습니다 [1]. 사무실에 문의해 주세요.',
+                     '기간표가 명시되어 있지 않으므로 생활관 사무실(043-740-1265)에 문의해 주세요 [1].'):
+            with self.subTest(text=text):
+                self.assertFalse(opens_with_not_found(text))
+        self.assertTrue(opens_with_not_found('도서관 시간은 근거 자료에 명시되어 있지 않아요 [1].'))
         reply = self.ask('전기장판', RecordingLLM(
             reply='전기장판은 명시적으로 언급되어 있지 않지만, 전열기 사용은 금지되어 있습니다 [1].'))
         self.assertEqual(reply.status, 'answered')
