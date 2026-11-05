@@ -165,6 +165,13 @@ class ChunkingTests(TestCase):
         thursday = next(c for c in build_chunks(['menu']) if c.key == 'menu:06월 19일')
         self.assertIn('석식 17:30–19:00 배식 (4,500원): ', thursday.content)
 
+    def test_penalty_rows_have_no_numbers_the_model_could_cite(self):
+        # '12. 무단 외박: 7점' 을 보고 [12] 를 출처로 인용하거나, '18. 음주…' 를 '흡연 18점' 으로 읽었다 (docs/adr/0023)
+        chunk = next(c for c in build_chunks(['rules']) if c.key == 'rules:penalty_table')
+        self.assertIn('- 무단 외박, 호실 무단 변경: 벌점 7점', chunk.content)
+        self.assertIn('- 관내 흡연: 퇴관', chunk.content)
+        self.assertNotRegex(chunk.content, r'(?m)^\d+\. ')
+
     def test_menu_chunk_title_spells_out_the_weekday(self):
         chunk = next(c for c in build_chunks(['menu']) if c.key == 'menu:06월 18일')
         self.assertEqual(chunk.title, '주간 식단표 06월 18일 수요일')
@@ -1549,6 +1556,33 @@ class TimeCheckTests(TestCase):
         self.assertNotIn('자정', reply.text)
         self.assertIn('1순위', reply.text)
         self.assertEqual([s['number'] for s in reply.sources], [2])   # 뺀 문장의 출처 [1] 은 빠진다
+
+    def test_a_shared_weekday_does_not_make_a_sentence_on_topic(self):
+        """'수요일 점심'에 '수요일 대청소는 밤 10시부터 자정'(틀림)을 덧붙인 답. 요일만 겹치는 건 같은 주제가 아니다."""
+        from knowledge.chat import checked_reply
+        from knowledge.answering import Draft
+        from knowledge.verify import FakeVerifier
+        text = ('수요일 점심은 소고기콩나물해장국, 오이소박이입니다 [1]. '
+                '수요일에는 대청소가 밤 10시부터 자정까지 있습니다 [2].')
+        evidence = self.hits('중식 11:00–13:30 배식 (4,500원): 소고기콩나물해장국, 오이소박이',
+                             '관생은 매주 수요일 22:00 ~ 23:00에 대청소를 실시한다.')
+        reply = checked_reply('수요일 점심 메뉴 뭐야?', Draft(status='ok', text=text, evidence=evidence, cited=[1, 2]),
+                              FakeVerifier())
+        self.assertEqual(reply.status, 'answered')
+        self.assertNotIn('대청소', reply.text)
+
+    def test_question_filler_words_do_not_make_a_sentence_on_topic(self):
+        """'들어갈 수 있어?'와 '이용에 있어 … 자정까지'가 '있어'로 겹쳐도 덧붙인 문장으로 본다."""
+        from knowledge.chat import checked_reply
+        from knowledge.answering import Draft
+        from knowledge.verify import FakeVerifier
+        text = ('신입생도 입관할 수 있습니다 [2]. '
+                '또한, 기숙사 이용에 있어 출입 시간은 일반적으로 오전 6시부터 자정까지입니다 [1].')
+        evidence = self.hits(self.RULES_3, '본교의 신입생 및 재학생에 한해 입관할 수 있다.')
+        reply = checked_reply('신입생도 기숙사 들어갈 수 있어?', Draft(status='ok', text=text, evidence=evidence, cited=[1, 2]),
+                              FakeVerifier())
+        self.assertEqual(reply.status, 'answered')
+        self.assertNotIn('자정', reply.text)
 
     def test_admin_draft_gets_a_warning_instead(self):
         from knowledge.answering import Draft, time_warnings

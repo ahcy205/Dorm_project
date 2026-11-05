@@ -161,6 +161,12 @@ def answer_question(question, known_names=(), llm=None, embedder=None, min_simil
     return reply
 
 
+# 질문과 문장의 주제어(한글 두 글자 앞부분)를 비교할 때 빼는 말: 때 표현과 질문투의 말.
+# '들어갈 수 있어?'와 '이용에 있어'가 '있어'로 겹쳐 덧붙인 문장을 같은 주제로 봤다
+DAY_WORDS = {'월요', '화요', '수요', '목요', '금요', '토요', '일요', '오늘', '내일', '어제', '매주', '매일', '주말', '평일',
+             '있어', '있나', '있는', '하면', '해야', '어떻', '무슨', '언제', '어디', '얼마', '뭐야', '되나', '돼요', '되요'}
+
+
 def drop_offtopic_times(question, draft):
     """시각 점검에 걸린 문장이 모두 질문과 관계없는 덧붙인 말이면 그 문장만 뺀다 (docs/adr/0022).
 
@@ -172,7 +178,8 @@ def drop_offtopic_times(question, draft):
     if not bad:
         return draft
     synonyms = load_synonyms()
-    asked = topic_words(question, synonyms)
+    # 요일·때를 가리키는 말만 겹치는 것은 같은 주제가 아니다. '수요일 점심'을 물었는데 '수요일 대청소'를 덧붙인 경우
+    asked = topic_words(question, synonyms) - DAY_WORDS
     if any(topic_words(s, synonyms) & asked for s in bad):
         return draft
     text = draft.text
