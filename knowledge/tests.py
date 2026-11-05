@@ -165,11 +165,24 @@ class ChunkingTests(TestCase):
         thursday = next(c for c in build_chunks(['menu']) if c.key == 'menu:06월 19일')
         self.assertIn('석식 17:30–19:00 배식 (4,500원): ', thursday.content)
 
+    def test_menu_chunk_title_spells_out_the_weekday(self):
+        chunk = next(c for c in build_chunks(['menu']) if c.key == 'menu:06월 18일')
+        self.assertEqual(chunk.title, '주간 식단표 06월 18일 수요일')
+
+    def test_refund_article_says_the_table_is_missing(self):
+        # 원본에 환불 기준표가 없어 제목만 남아 있었고, 모델이 "벌점 20점 이하면 환불"처럼 지어냈다 (docs/adr/0022)
+        chunk = next(c for c in build_chunks(['info']) if c.key == 'info:article:21')
+        self.assertIn('기준표는 이 안내에 실려 있지 않다', chunk.content)
+        self.assertIn('행정실에 문의', chunk.content)
+
     def test_menu_chunk_says_when_a_meal_is_not_served(self):
         # 메뉴가 없는 끼니를 빈칸으로 두면 모델이 다른 요일 메뉴를 가져왔다 (docs/adr/0022)
         chunk = next(c for c in build_chunks(['menu']) if c.key == 'menu:06월 20일')
-        self.assertIn('석식: 운영하지 않음', chunk.content)
+        self.assertIn('석식: 운영하지 않음 (금요일은 석식 메뉴가 없음)', chunk.content)
         self.assertNotIn('즐거운', chunk.content)
+        # 다른 요일 청크에는 '운영하지 않음'이 없어야 한다 (수요일 답에 "석식 없음"이 끼어들었음)
+        wednesday = next(c for c in build_chunks(['menu']) if c.key == 'menu:06월 18일')
+        self.assertNotIn('운영하지', wednesday.content)
         self.assertNotIn('·', chunk.content.split('\n')[0])
 
     def test_bus_chunk_lists_stops_with_times_and_skips_breaks(self):
@@ -662,6 +675,28 @@ class QueryExpansionTests(TestCase):
         embed_pending(FakeEmbedder())
         keys = [h.chunk.key for h in search('전기장판 써도 돼?', embedder=FakeEmbedder(), use_vector=False).hits]
         self.assertIn('rules:article:10', keys)
+
+
+class MenuDayFocusTests(TestCase):
+    """요일을 물으면 그 요일 식단만 근거로 남긴다 (docs/adr/0022).
+    수요일 점심을 물었는데 함께 걸린 금요일 근거의 '석식: 운영하지 않음'을 모델이 수요일에 갖다 붙였다."""
+
+    def hits(self):
+        from knowledge.search import SearchHit
+        menu = [SearchHit(chunk=KnowledgeChunk(key=f'menu:{d}', title=d, content='식단', metadata={'weekday': w}), score=1.0)
+                for d, w in (('06월 18일', '수'), ('06월 16일', '월'), ('06월 20일', '금'))]
+        rule = SearchHit(chunk=KnowledgeChunk(key='rules:article:11', title='제11조', content='대청소'), score=0.5)
+        return menu[:2] + [rule] + menu[2:]
+
+    def test_only_the_asked_day_menu_stays(self):
+        from knowledge.answering import focus_menu_day
+        keys = [h.chunk.key for h in focus_menu_day('수요일 점심 메뉴 뭐야?', self.hits())]
+        self.assertEqual(keys, ['menu:06월 18일', 'rules:article:11'])
+
+    def test_no_weekday_or_no_match_keeps_everything(self):
+        from knowledge.answering import focus_menu_day
+        self.assertEqual(len(focus_menu_day('학식 한 끼 얼마야?', self.hits())), 4)
+        self.assertEqual(len(focus_menu_day('토요일에도 밥 나와?', self.hits())), 4)
 
 
 class DraftPromptTests(TestCase):
@@ -1486,6 +1521,21 @@ class TimeCheckTests(TestCase):
         self.assertFalse(reply.verdict.passed)
         self.assertIn('시각', reply.verdict.reason)
         self.assertEqual(CountingVerifier.calls, 0)
+
+    def test_an_off_topic_wrong_time_sentence_is_dropped_not_the_whole_answer(self):
+        """신입생 질문에 묻지 않은 '출입은 자정까지'를 덧붙인 답: 그 문장만 빼고 검증으로 넘긴다 (docs/adr/0022)."""
+        from knowledge.chat import checked_reply
+        from knowledge.answering import Draft
+        from knowledge.verify import FakeVerifier
+        text = ('신입생도 입관할 수 있습니다 [2]. 신입생은 1순위로 배정됩니다 [2]. '
+                '또한, 기숙사 출입 시간은 오전 6시부터 자정까지입니다 [1]. 궁금한 점은 문의해 주세요.')
+        evidence = self.hits(self.RULES_3, '본교의 신입생 및 재학생에 한해 입관할 수 있다. 1순위 : 신입생')
+        reply = checked_reply('신입생도 기숙사 들어갈 수 있어?', Draft(status='ok', text=text, evidence=evidence, cited=[1, 2]),
+                              FakeVerifier())
+        self.assertEqual(reply.status, 'answered')
+        self.assertNotIn('자정', reply.text)
+        self.assertIn('1순위', reply.text)
+        self.assertEqual([s['number'] for s in reply.sources], [2])   # 뺀 문장의 출처 [1] 은 빠진다
 
     def test_admin_draft_gets_a_warning_instead(self):
         from knowledge.answering import Draft, time_warnings

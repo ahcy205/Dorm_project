@@ -20,11 +20,12 @@ import yaml
 from django.core.cache import cache
 
 from .bus_answer import bus_draft
-from .answering import REFUSAL_PHRASE, SYSTEM_PROMPT as DRAFT_SYSTEM_PROMPT, draft_for_text
+from .answering import REFUSAL_PHRASE, SYSTEM_PROMPT as DRAFT_SYSTEM_PROMPT, check_citations, draft_for_text
 from .embeddings import get_embedder
 from .llm import get_llm
 from .privacy import mask_personal_info
-from .time_check import mismatched_times
+from .search import load_synonyms
+from .time_check import SENTENCE as TIME_SENTENCE, mismatched_times, times as find_times, words as topic_words
 from .verify import Verdict, get_verifier
 
 logger = logging.getLogger(__name__)
@@ -160,11 +161,39 @@ def answer_question(question, known_names=(), llm=None, embedder=None, min_simil
     return reply
 
 
+def drop_offtopic_times(question, draft):
+    """시각 점검에 걸린 문장이 모두 질문과 관계없는 덧붙인 말이면 그 문장만 뺀다 (docs/adr/0022).
+
+    신입생 입관을 물었는데 "출입 시간은 자정까지"(틀림)를 덧붙인 답은 앞부분이 맞는데도 통째로 숨겨졌다.
+    질문과 주제어가 겹치는 문장이 틀렸으면(소등을 물었는데 "23:00 소등") 지금처럼 숨긴다.
+    빼고 나서 출처 번호가 하나도 안 남으면 빼지 않는다 — 답이 없는 것이므로 숨겨지는 쪽이 맞다.
+    """
+    bad = [s for s in TIME_SENTENCE.split(draft.text) if find_times(s) and mismatched_times(s, draft.evidence)]
+    if not bad:
+        return draft
+    synonyms = load_synonyms()
+    asked = topic_words(question, synonyms)
+    if any(topic_words(s, synonyms) & asked for s in bad):
+        return draft
+    text = draft.text
+    for sentence in bad:
+        text = text.replace(sentence, '')
+    text = re.sub(r'[ \t]{2,}', ' ', text).strip()
+    cited, _ = check_citations(text, len(draft.evidence))
+    if not cited:
+        return draft
+    draft.warnings.append('질문과 관계없는 틀린 시각 문장을 뺐습니다: ' + ' / '.join(s.strip()[:60] for s in bad))
+    draft.text, draft.cited = text, cited
+    return draft
+
+
 def checked_reply(question, draft, verifier=None):
     """검사를 모두 통과한 답을 판단 모델로 한 번 더 검증한다 (docs/adr/0015). 떨어지면 답을 숨긴다.
 
     그 전에 답의 시각이 근거의 같은 주제 줄에 있는지 규칙으로 본다 (docs/adr/0019). 걸리면 판단 모델은 부르지 않는다.
+    질문과 관계없이 덧붙인 문장만 틀렸으면 그 문장을 빼고 검사한다 (drop_offtopic_times).
     """
+    draft = drop_offtopic_times(question, draft)
     problems = mismatched_times(draft.text, draft.evidence)
     if problems:
         verdict = Verdict(False, reason='근거와 다른 시각: ' + ' / '.join(problems))
