@@ -123,10 +123,12 @@ def menu_chunks():
                 lines.append(f'{meal["name"]} {times} 배식 ({meal["price"]}): {dishes}')
             else:
                 # 빈칸으로 두면 모델이 다른 요일 메뉴를 가져왔다. 없다는 것을 문장으로 적는다
-                lines.append(f'{meal["name"]}: 운영하지 않음 (이 날은 {meal["name"]} 메뉴가 없음)')
+                # 공통 안내(notes)에 적으면 모든 요일 청크에 붙어 다른 요일 답에도 끼어들었다. 그 날 청크에만 적는다
+                lines.append(f'{meal["name"]}: 운영하지 않음 ({day["weekday"]}요일은 {meal["name"]} 메뉴가 없음)')
         chunks.append(Chunk(
             source=Source.MENU, key=f'menu:{day["date"]}',
-            title=f'{doc["title"]} {day["date"]} ({day["weekday"]})',
+            # 학생은 '수요일'이라고 묻는다. '(수)' 한 글자로는 키워드 검색에 안 걸려 다른 날 식단이 먼저 나왔다
+            title=f'{doc["title"]} {day["date"]} {day["weekday"]}요일',
             content='\n'.join(lines + doc.get('notes', [])), url=doc['url'],
             metadata={'date': day['date'], 'weekday': day['weekday']},
         ))

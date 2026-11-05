@@ -62,6 +62,24 @@ class Draft:
     best_similarity: float | None = None
 
 
+WEEKDAY_ASKED = re.compile(r'([월화수목금토일])요일')
+
+
+def focus_menu_day(question, hits):
+    """질문에 요일이 있으면 다른 요일 식단 근거를 뺀다 (docs/adr/0022).
+
+    '수요일 점심'을 물었는데 함께 걸린 금요일 근거의 '석식: 운영하지 않음'을 모델이 수요일에 갖다 붙였다.
+    그 요일 식단이 근거에 없으면(예: 토요일) 아무것도 빼지 않는다.
+    """
+    asked = set(WEEKDAY_ASKED.findall(question))
+    if not asked:
+        return hits
+    menu_days = {(h.chunk.metadata or {}).get('weekday') for h in hits if h.chunk.key.startswith('menu:')}
+    if not asked & menu_days:
+        return hits
+    return [h for h in hits if not h.chunk.key.startswith('menu:') or (h.chunk.metadata or {}).get('weekday') in asked]
+
+
 def word_hints(question, hits):
     """질문의 학생 말이 근거에서는 다른 말로 적혀 있으면 알려 주는 줄 (synonyms.yaml, docs/adr/0022).
 
@@ -111,6 +129,7 @@ def draft_for_text(title, content, known_names=(), exclude_keys=(), llm=None, em
     result = search(f'{title}\n{content}', k=EVIDENCE_COUNT + len(exclude_keys), embedder=embedder,
                     sources=sources)
     hits = [h for h in result.hits if h.chunk.key not in exclude_keys][:EVIDENCE_COUNT]
+    hits = focus_menu_day(f'{title} {content}', hits)
     best = max((h.similarity for h in hits if h.similarity is not None), default=None)
     draft = Draft(status='ok', evidence=hits, best_similarity=best)
 
