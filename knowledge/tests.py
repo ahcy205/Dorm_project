@@ -162,7 +162,14 @@ class ChunkingTests(TestCase):
         # "석식 (4,500원, 17:30·19:00)"을 모델이 "오후 7시 30분부터 9시"로 읽었다 (docs/adr/0022)
         chunk = next(c for c in build_chunks(['menu']) if c.key == 'menu:06월 20일')
         self.assertIn('중식 11:00–13:30 배식 (4,500원): 잔치국수', chunk.content)
-        self.assertIn('석식 17:30–19:00 배식 (4,500원): ', chunk.content)
+        thursday = next(c for c in build_chunks(['menu']) if c.key == 'menu:06월 19일')
+        self.assertIn('석식 17:30–19:00 배식 (4,500원): ', thursday.content)
+
+    def test_menu_chunk_says_when_a_meal_is_not_served(self):
+        # 메뉴가 없는 끼니를 빈칸으로 두면 모델이 다른 요일 메뉴를 가져왔다 (docs/adr/0022)
+        chunk = next(c for c in build_chunks(['menu']) if c.key == 'menu:06월 20일')
+        self.assertIn('석식: 운영하지 않음', chunk.content)
+        self.assertNotIn('즐거운', chunk.content)
         self.assertNotIn('·', chunk.content.split('\n')[0])
 
     def test_bus_chunk_lists_stops_with_times_and_skips_breaks(self):

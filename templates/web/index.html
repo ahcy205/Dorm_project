@@ -114,7 +114,7 @@
         {% for meal in board.meals %}
         <li{% if meal.over %} class="is-over"{% endif %}>
           <div class="dg-meals__top"><b>{{ meal.name }}</b><span class="dg-pill dg-num">{{ meal.time }}</span>{% if meal.over %}<span class="dg-meals__done">배식 끝</span>{% endif %}</div>
-          <p>{{ meal.dishes|join:" · " }}</p>
+          {% if meal.dishes %}<p>{{ meal.dishes|join:" · " }}</p>{% else %}<p class="dg-muted">오늘 {{ meal.name }}은 운영하지 않아요.</p>{% endif %}
         </li>
         {% endfor %}
       </ul>
