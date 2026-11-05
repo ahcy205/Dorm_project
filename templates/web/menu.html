@@ -37,7 +37,7 @@
           </th>
           {% for cell in meal.cells %}
           <td{% if cell.is_today %} class="is-today"{% endif %}>
-            <ul class="dg-menu__dishes">{% for dish in cell.dishes %}<li>{{ dish }}</li>{% endfor %}</ul>
+            {% if cell.dishes %}<ul class="dg-menu__dishes">{% for dish in cell.dishes %}<li>{{ dish }}</li>{% endfor %}</ul>{% else %}<p class="dg-menu__off">운영 안 함</p>{% endif %}
           </td>
           {% endfor %}
         </tr>
@@ -58,7 +58,7 @@
         {% for meal in day.meals %}
         <li>
           <div class="dg-rows__key"><span class="dg-rows__title">{{ meal.name }}</span><br><span class="dg-small dg-num">{{ meal.time }}</span></div>
-          <div class="dg-rows__main"><p>{{ meal.dishes|join:" · " }}</p><p class="dg-small dg-muted">{{ meal.price }}</p></div>
+          <div class="dg-rows__main">{% if meal.dishes %}<p>{{ meal.dishes|join:" · " }}</p><p class="dg-small dg-muted">{{ meal.price }}</p>{% else %}<p class="dg-menu__off">운영 안 함</p>{% endif %}</div>
         </li>
         {% endfor %}
       </ul>

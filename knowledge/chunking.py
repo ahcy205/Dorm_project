@@ -119,7 +119,11 @@ def menu_chunks():
             # 시간 칸은 배식 시작·종료 시각이다. "17:30·19:00"으로 두면 모델이 "7시 30분부터 9시"처럼 잘못 읽었다
             times = '–'.join(row['time'] for row in meal['rows'] if row['time'])
             dishes = ', '.join(row['dishes'][index] for row in meal['rows'] if row['dishes'][index])
-            lines.append(f'{meal["name"]} {times} 배식 ({meal["price"]}): {dishes}')
+            if dishes:
+                lines.append(f'{meal["name"]} {times} 배식 ({meal["price"]}): {dishes}')
+            else:
+                # 빈칸으로 두면 모델이 다른 요일 메뉴를 가져왔다. 없다는 것을 문장으로 적는다
+                lines.append(f'{meal["name"]}: 운영하지 않음 (이 날은 {meal["name"]} 메뉴가 없음)')
         chunks.append(Chunk(
             source=Source.MENU, key=f'menu:{day["date"]}',
             title=f'{doc["title"]} {day["date"]} ({day["weekday"]})',

@@ -1021,6 +1021,16 @@ class HomeBoardTests(TestCase):
         self.assertIn('잔치국수', friday['meals'][0]['dishes'])
         self.assertEqual(self.board(datetime(2026, 10, 31, 9, 0))['meals'], [])
 
+    def test_friday_has_no_dinner_and_home_says_so(self):
+        """금요일 석식 칸은 원래 '즐거운 / 주말 / 되세요 ^^'(메뉴가 아님)였다. 메뉴가 없는 끼니는 '운영 안 함'으로 보인다."""
+        from datetime import datetime
+        friday = self.board(datetime(2026, 10, 30, 9, 0))
+        self.assertEqual(friday['meals'][1]['dishes'], [])
+        with mock.patch('web.views.timezone.localtime', return_value=timezone.make_aware(datetime(2026, 10, 30, 9, 0))):
+            html = self.client.get(reverse('web:home')).content.decode()
+        self.assertIn('석식은 운영하지 않아요', html)
+        self.assertNotIn('즐거운', html)
+
     def test_latest_outing_for_the_student(self):
         from datetime import datetime
         student = User.objects.create_user('20250001', password='pw12345!')
@@ -1346,6 +1356,11 @@ class InfoPageTests(TestCase):
         saturday = week_menu(sources.load('menu'), self.at(2026, 10, 31, 9, 0))
         self.assertFalse(any(d['is_today'] for d in saturday['days']))
         self.assertTrue(saturday['weekend'])
+
+    def test_menu_page_marks_a_meal_without_dishes(self):
+        response = self.client.get(reverse('web:menu'))
+        self.assertContains(response, '운영 안 함', count=2)   # 넓은 화면 표와 좁은 화면 목록에 한 번씩
+        self.assertNotContains(response, '되세요')
 
     def test_menu_page_shows_notes_and_today(self):
         with mock.patch('web.views.timezone.localtime', return_value=self.at(2026, 10, 28, 9, 0)):  # 수요일
