@@ -152,7 +152,6 @@ flowchart LR
 - **한 항목에 브랜치 하나, PR 하나**: 실패하는 테스트를 먼저 쓰고, CI가 통과해야 머지합니다 ([개발 규칙](CONTRIBUTING.md)).
 - **결정은 기록**: DB, 검색, 모델 선택, 검증 방식처럼 중요한 결정은 이유와 측정 결과를 [ADR](docs/adr/)로 남깁니다. 시도했다가 나빠져서 버린 방법도 기록합니다.
 - **화면 변경은 전후 비교**: [검증 도구](tools/README.md)로 화면 HTML과 캡처를 비교해 의도한 차이만 있는지 확인합니다.
-- **AI 코딩 도구**: 팀 프로젝트 종료 뒤의 작업은 Claude Code와 함께 했고, 작업 규칙은 [CLAUDE.md](CLAUDE.md)에 있습니다.
 
 ---
 
@@ -204,6 +203,6 @@ python manage.py runserver           # 8000이 사용 중이면 127.0.0.1:8001
 - [🧭 결정 기록 (ADR)](docs/adr/) — DB, 검색, 모델, 검증 방식 등 주요 결정과 이유·측정
 - [🗺️ 흐름도](docs/flowchart.html) — 시스템 구조, 업무 흐름, 데이터 구조, 권한 (내려받아 브라우저로 열기)
 - [📝 변경이력](CHANGELOG.md)
-- [🧑‍💻 개발 규칙](CONTRIBUTING.md) · [AI 작업 규칙](CLAUDE.md)
+- [🧑‍💻 개발 규칙](CONTRIBUTING.md)
 - [🔍 검증 도구](tools/README.md) — 화면 전후 비교
 - [📘 결과보고서](docs/결과보고서.pdf) · [📑 화면정의서](docs/화면정의서.pdf) (팀 프로젝트 당시)
