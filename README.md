@@ -166,7 +166,7 @@ python manage.py runserver
 - 테스트: `python manage.py test web dorm knowledge` (DB가 켜져 있어야 함)
 - RAG 검색 자료 만들기: `pip install -r requirements-ml.txt`(임베딩 모델, 선택) 후 `python manage.py build_knowledge_index`. 모델 없이 확인할 때는 `--backend fake`
 - 검색 품질 측정: `python manage.py evaluate_knowledge_search`
-- 학생 AI 챗봇: `/chatbot/` (로그인 필요, Ollama 필요). 규칙·안내·셔틀·식단·공지에서 찾아 출처와 함께 답합니다 ([ADR 0011](docs/adr/0011-student-chatbot.md)). 대화는 익명으로 180일 보관하고 👍/👎를 받습니다. 못 답한 질문은 `python manage.py export_chat_misses`로 확인합니다 ([ADR 0012](docs/adr/0012-chat-log-anonymous.md)). 셔틀 시간 질문은 시간표에서 직접 계산해 답합니다 ([ADR 0017](docs/adr/0017-bus-answers-from-timetable.md)). 답에 근거와 다른 주제의 시각이 있으면 보여 주지 않습니다 ([ADR 0019](docs/adr/0019-time-topic-check.md))
+- 학생 AI 챗봇: `/chatbot/` (로그인 필요, Ollama 필요). 규칙·안내·셔틀·식단·공지에서 찾아 출처와 함께 답합니다 ([ADR 0011](docs/adr/0011-student-chatbot.md)). 대화는 익명으로 180일 보관하고 👍/👎를 받습니다. 못 답한 질문은 `python manage.py export_chat_misses`로 확인합니다 ([ADR 0012](docs/adr/0012-chat-log-anonymous.md)). 셔틀 시간 질문은 시간표에서 직접 계산해 답합니다 ([ADR 0017](docs/adr/0017-bus-answers-from-timetable.md)). 답에 근거와 다른 주제의 시각이 있으면 보여 주지 않습니다 ([ADR 0019](docs/adr/0019-time-topic-check.md)). 전체 설계와 정확도 개선 방법은 [챗봇 설계 문서](docs/chatbot.md)에 정리했습니다
 - 문의 답변 초안(관리자용): [Ollama](https://ollama.com) 설치 후 `ollama pull exaone3.5:7.8b`. 로컬에서만 실행하며 무료입니다 ([ADR 0007](docs/adr/0007-local-llm-answer-draft.md))
 - DB가 꺼져 있으면 `PostgreSQL에 접속할 수 없습니다` 안내가 나옵니다. Docker Desktop을 켜고 `docker compose up -d db`를 실행하세요.
 - 이 저장소는 로컬 실행 기준입니다. 배포용 설정(`DEBUG=False`, 허용 호스트·CORS 제한)은 적용하지 않았습니다.
@@ -181,6 +181,7 @@ python manage.py runserver
 - [📘 결과보고서](/docs/결과보고서.pdf)
 - [📑 화면정의서](/docs/화면정의서.pdf)
 - [🗺️ 흐름도](/docs/flowchart.html) — 시스템 구조, 업무 흐름, 데이터 구조, 권한 (다운로드 후 브라우저로 열기)
+- [🤖 챗봇 설계와 정확도](/docs/chatbot.md) — 답을 만드는 흐름, 틀린 답을 막는 검사 4단계, 정확도를 재고 올리는 방법
 - [📝 변경이력](/CHANGELOG.md)
 - [🧑‍💻 개발 규칙](/CONTRIBUTING.md) — 브랜치·커밋·PR·테스트 규칙 ([AI 작업 규칙](/CLAUDE.md))
 - [🧭 결정 기록 (ADR)](/docs/adr/) — DB, API 호환성, 배포 여부 등 주요 결정과 이유
